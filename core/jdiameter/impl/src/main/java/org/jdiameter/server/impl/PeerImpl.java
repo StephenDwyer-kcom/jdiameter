@@ -160,7 +160,7 @@ public class PeerImpl extends org.jdiameter.client.impl.controller.PeerImpl impl
 
   @Override
   public IContext getContext() {
-    return new LocalActionConext();
+    return new LocalActionContext();
   }
 
   @Override
@@ -210,7 +210,7 @@ public class PeerImpl extends org.jdiameter.client.impl.controller.PeerImpl impl
     return "SPeer{" + "Uri=" + uri + "; State=" + fsm + "; con=" + connection + "; incCon" + incConnections + " }";
   }
 
-  protected class LocalActionConext extends ActionContext {
+  protected class LocalActionContext extends ActionContext {
 
     @Override
     public void sendCeaMessage(int resultCode, Message cer,  String errMessage) throws TransportException, OverloadException {

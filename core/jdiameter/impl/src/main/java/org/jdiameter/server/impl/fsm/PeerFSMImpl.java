@@ -97,7 +97,7 @@ public class PeerFSMImpl extends org.jdiameter.client.impl.fsm.PeerFSMImpl imple
   protected State[] getStates() {
     if (states == null) {
       states = new State[] {
-          new MyState() { // OKEY
+          new MyState() { // OKAY
             @Override
             public void entryAction() { // todo send buffered messages
               setInActiveTimer();

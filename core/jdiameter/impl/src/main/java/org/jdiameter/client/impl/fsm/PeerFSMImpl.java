@@ -60,6 +60,8 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
 
+import org.jdiameter.api.Avp;
+import org.jdiameter.api.AvpDataException;
 import org.jdiameter.api.Configuration;
 import org.jdiameter.api.DisconnectCause;
 import org.jdiameter.api.Message;
@@ -432,6 +434,14 @@ public class PeerFSMImpl implements IStateMachine {
       }
     }
 
+    protected boolean willReconnect(IMessage message) throws AvpDataException {
+      // Only attempt to reconnect when the Disconnect-Cause AVP was 0 REBOOTING
+      // and the Peer's LocalActionContext is configured to attempt connection
+      Avp disconnectCause = message.getAvps().getAvp(Avp.DISCONNECT_CAUSE);
+      boolean willReconnect = (disconnectCause != null) ? (disconnectCause.getInteger32() == DisconnectCause.REBOOTING) : false;
+      return willReconnect && context.isRestoreConnection();
+    }
+
     protected void setTimer(long value) {
       timer = value + System.currentTimeMillis();
     }
@@ -456,7 +466,7 @@ public class PeerFSMImpl implements IStateMachine {
   protected org.jdiameter.api.app.State[] getStates() {
     if (states == null) {
       states = new org.jdiameter.api.app.State[] { // todo merge and redesign with server fsm
-          new MyState() { // OKEY
+          new MyState() { // OKAY
             @Override
             public void entryAction() {
               setInActiveTimer();
@@ -518,8 +528,24 @@ public class PeerFSMImpl implements IStateMachine {
                   catch (Throwable e) {
                     logger.debug("Can not send DPA", e);
                   }
-                  doDisconnect();
-                  switchToNextState(FsmState.DOWN);
+
+                  IMessage message = (IMessage) event.getData();
+                  try {
+                    if (willReconnect(message)) {
+                      doDisconnect();
+                      doEndConnection();
+                    }
+                    else {
+                      doDisconnect();
+                      switchToNextState(DOWN);
+                    }
+                  }
+                  catch (AvpDataException ade) {
+                    logger.warn("Disconnect cause is bad.", ade);
+                    doDisconnect();
+                    switchToNextState(DOWN);
+                  }
+
                   break;
                 case DWR_EVENT:
                   setInActiveTimer();
@@ -594,8 +620,24 @@ public class PeerFSMImpl implements IStateMachine {
                   catch (Throwable e) {
                     logger.debug("Can not send DPA", e);
                   }
-                  doDisconnect();
-                  switchToNextState(FsmState.DOWN);
+
+                  IMessage message = (IMessage) event.getData();
+                  try {
+                    if (willReconnect(message)) {
+                      doDisconnect();
+                      doEndConnection();
+                    }
+                    else {
+                      doDisconnect();
+                      switchToNextState(DOWN);
+                    }
+                  }
+                  catch (AvpDataException ade) {
+                    logger.warn("Disconnect cause is bad.", ade);
+                    doDisconnect();
+                    switchToNextState(DOWN);
+                  }
+
                   break;
                 case DWA_EVENT:
                   switchToNextState(FsmState.OKAY);
